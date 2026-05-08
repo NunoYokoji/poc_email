@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  zoo:
+    image: zookeeper:latest
+    container_name: zookeeper_service
+    ports:
+      - "2181:2181"
+    networks:
+      - email-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq_service
+    ports:
+      - "5672:5672"   
+      - "15672:15672" 
+    networks:
+      - email-net
+    depends_on:
+      - zoo
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog_service
+    ports:
+      - "1025:1025" 
+      - "8025:8025" 
+    networks:
+      - email-net
+
+  backend:
+    build: ./backend
+    container_name: backend_api
+    ports:
+      - "5000:5000"
+    networks:
+      - email-net
+    depends_on:
+      - zoo
+      - rabbitmq
+
+  consumer:
+    build: ./consumer
+    container_name: email_consumer
+    networks:
+      - email-net
+    depends_on:
+      - rabbitmq
+      - mailhog
+
+  frontend:
+    build: ./frontend
+    container_name: frontend_web
+    ports:
+      - "8080:8080"
+    networks:
+      - email-net
+    depends_on:
+      - backend
+
+networks:
+  email-net:
+    driver: bridge
