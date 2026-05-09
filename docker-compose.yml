@@ -40,12 +40,15 @@ services:
 
   consumer:
     build: ./consumer
-    container_name: email_consumer
     networks:
       - email-net
     depends_on:
-      - rabbitmq
-      - mailhog
+      rabbitmq:
+        condition: service_started
+      mailhog:
+        condition: service_started
+    deploy:
+      replicas: 3
 
   frontend:
     build: ./frontend
