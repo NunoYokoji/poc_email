@@ -1,0 +1,193 @@
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg:           #ffffff;
+  --color-border:       #222222;
+  --color-text:         #111111;
+  --color-muted:        #888888;
+  --color-accent:       #4caf78;
+  --color-accent-hover: #3d9864;
+  --color-placeholder:  #aaaaaa;
+  --font-main: 'Patrick Hand', cursive;
+  --radius-input: 10px;
+  --radius-btn:   12px;
+  --border-width: 1.5px;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-main);
+  background: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.card {
+  width: 100%;
+  max-width: 500px;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 350ms ease, transform 350ms ease;
+}
+
+.card.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card__header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.card__title {
+  font-size: 1.9rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.1rem;
+}
+
+.card__subtitle {
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  line-height: 1.5;
+}
+
+.email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.form-group--body .input-wrapper {
+  width: 100%;
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.avatar svg {
+  width: 26px;
+  height: 26px;
+  color: var(--color-text);
+}
+
+.input-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.input-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  font-weight: bold;
+}
+
+.input-field {
+  width: 100%;
+  font-family: var(--font-main);
+  font-size: 1rem;
+  color: var(--color-text);
+  background: #ffffff;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-input);
+  padding: 0.6rem 0.85rem;
+  outline: none;
+  transition: border-color 150ms ease;
+  resize: none;
+}
+
+.input-field::placeholder {
+  color: var(--color-placeholder);
+}
+
+.input-field:focus {
+  border-color: var(--color-accent);
+}
+
+.textarea-field {
+  min-height: 110px;
+  line-height: 1.5;
+}
+
+.form-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.feedback {
+  font-size: 0.85rem;
+  min-height: 1.1em;
+  color: var(--color-accent);
+}
+
+.feedback.is-error {
+  color: #e05252;
+}
+
+.spinner {
+  display: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ddd;
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.spinner.htmx-request { display: block; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.btn-send {
+  font-family: var(--font-main);
+  font-size: 1.05rem;
+  color: #ffffff;
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-btn);
+  padding: 0.9rem 2rem;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.btn-send:hover  { background: var(--color-accent-hover); }
+.btn-send:active { background: #2f7a50; }
+.btn-send:disabled { opacity: 0.6; cursor: not-allowed; }
