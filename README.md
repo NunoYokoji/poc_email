@@ -9,11 +9,24 @@ Este repositório contém uma prova de conceito de envio de e-mails assíncrono,
 
 ---
 
+## 🛠️ Tecnologias Utilizadas
+
+- **Python 3.9 / Flask**: backend da API REST e servidor do frontend
+- **RabbitMQ 3**: broker de mensagens com painel de gerenciamento integrado
+- **Apache ZooKeeper**: serviço de coordenação e configuração distribuída
+- **HTMX**: interações assíncronas no frontend sem JavaScript pesado
+- **MailHog**: servidor SMTP fake para captura de e-mails em desenvolvimento
+- **Docker / Docker Compose**: containerização e orquestração de todos os serviços
+- **NGINX**: load balancer para distribuição de requisições entre múltiplas instâncias
+
+---
+
 ## 📋 Índice
 
 - [Parte 1 — Sistema Base](#-parte-1--sistema-base)
 - [Parte 2 — Múltiplos Consumers](#-parte-2--múltiplos-consumers)
 - [Parte 3 — Load Balancer com NGINX](#-parte-3--load-balancer-com-nginx)
+- [Como Utilizar](#-como-utilizar)
 
 ---
 
@@ -29,15 +42,6 @@ Fluxo assíncrono de ponta a ponta — do formulário web até a entrega do e-ma
 - **Consumer resiliente**: o serviço consumidor reconecta automaticamente ao RabbitMQ em caso de falha de conexão
 - **Ambiente de testes com MailHog**: todos os e-mails são capturados localmente, sem risco de envio real durante o desenvolvimento
 
-### 🛠️ Tecnologias Utilizadas
-
-- **Python 3.9 / Flask**: backend da API REST e servidor do frontend
-- **RabbitMQ 3**: broker de mensagens com painel de gerenciamento integrado
-- **Apache ZooKeeper**: serviço de coordenação e configuração distribuída
-- **HTMX**: interações assíncronas no frontend sem JavaScript pesado
-- **MailHog**: servidor SMTP fake para captura de e-mails em desenvolvimento
-- **Docker / Docker Compose**: containerização e orquestração de todos os serviços
-
 ### ⚙️ Arquitetura
 
 ```
@@ -47,14 +51,14 @@ Frontend (Flask) → Backend API (Flask) → RabbitMQ → Consumer → MailHog
                   (config dinâmica)
 ```
 
-| Serviço    | Tecnologia               | Porta | Responsabilidade                          |
-|------------|--------------------------|-------|-------------------------------------------|
-| `frontend` | Flask + HTMX             | 8080  | Interface web para composição do e-mail   |
-| `backend`  | Flask + Pika + Kazoo     | 5000  | API REST que publica mensagens na fila    |
-| `consumer` | Python + Pika            | —     | Consome a fila e realiza o envio SMTP     |
-| `rabbitmq` | RabbitMQ 3 (management)  | 5672 / 15672 | Broker de mensagens com fila durável |
-| `zoo`      | Apache ZooKeeper         | 2181  | Fornece configuração dinâmica ao backend  |
-| `mailhog`  | MailHog                  | 1025 / 8025 | Servidor SMTP fake para testes locais |
+| Serviço    | Tecnologia               | Porta        | Responsabilidade                          |
+|------------|--------------------------|--------------|-------------------------------------------|
+| `frontend` | Flask + HTMX             | 8080         | Interface web para composição do e-mail   |
+| `backend`  | Flask + Pika + Kazoo     | 5000         | API REST que publica mensagens na fila    |
+| `consumer` | Python + Pika + smtplib  | —            | Consome a fila e realiza o envio SMTP     |
+| `rabbitmq` | RabbitMQ 3 (management)  | 5672 / 15672 | Broker de mensagens com fila durável      |
+| `zoo`      | Apache ZooKeeper         | 2181         | Fornece configuração dinâmica ao backend  |
+| `mailhog`  | MailHog                  | 1025 / 8025  | Servidor SMTP fake para testes locais     |
 
 ### 📁 Estrutura do Projeto
 
@@ -71,7 +75,7 @@ poc_email/
 ├── frontend/
 │   ├── app.py              # Serve o formulário HTML
 │   ├── templates/
-│   │   └── index.html      # UI com HTMX
+│   │   └── index.html
 │   ├── static/
 │   │   ├── style.css
 │   │   └── script.js
@@ -79,34 +83,6 @@ poc_email/
 │   └── Dockerfile
 └── docker-compose.yml
 ```
-
-### 🚀 Como Utilizar
-
-1. **Clone o repositório:**
-    ```bash
-    git clone https://github.com/NunoYokoji/poc_email.git
-    cd poc_email
-    ```
-
-2. **Suba todos os serviços:**
-    ```bash
-    docker compose up --build
-    ```
-
-3. **Acesse as interfaces:**
-
-    | Interface                  | URL                       |
-    |----------------------------|---------------------------|
-    | Frontend (app)             | http://localhost:8080     |
-    | RabbitMQ Dashboard         | http://localhost:15672    |
-    | MailHog (caixa de entrada) | http://localhost:8025     |
-
-    > Credenciais padrão do RabbitMQ: `guest` / `guest`
-
-4. **Envie um e-mail:**
-    - Preencha o destinatário e o corpo da mensagem no formulário
-    - Clique em **Enviar Email**
-    - Acompanhe o e-mail chegando na caixa do MailHog em `http://localhost:8025`
 
 ---
 
@@ -116,32 +92,14 @@ poc_email/
 
 Adicionado suporte a múltiplas instâncias do serviço `consumer` rodando em paralelo, permitindo o processamento concorrente de mensagens da fila do RabbitMQ.
 
-### Por que funciona
+O `docker-compose.yml` foi atualizado para usar `deploy.replicas: 3` no serviço `consumer`, subindo 3 instâncias automaticamente. O `container_name` foi removido pois nomes fixos impedem múltiplas instâncias. O `depends_on` foi convertido para o formato de mapping (objeto), obrigatório ao usar `replicas`.
+
+### Por que funciona sem alterar o código do consumer
 
 O consumer já estava implementado corretamente para escalonamento horizontal:
 - `basic_qos(prefetch_count=1)` — cada consumer processa uma mensagem por vez
 - `basic_ack` manual — garante que mensagens não processadas voltam para a fila em caso de falha
 - Reconexão automática ao RabbitMQ em caso de queda
-
-### Alterações no `docker-compose.yml`
-
-O serviço `consumer` passou a usar `deploy.replicas` e o `depends_on` foi convertido para formato de mapping (obrigatório ao usar `replicas`):
-
-```yaml
-consumer:
-  build: ./consumer
-  networks:
-    - email-net
-  depends_on:
-    rabbitmq:
-      condition: service_started
-    mailhog:
-      condition: service_started
-  deploy:
-    replicas: 3
-```
-
-> O `container_name` foi removido — nomes fixos impedem múltiplas instâncias.
 
 ### ⚙️ Arquitetura
 
@@ -149,19 +107,6 @@ consumer:
 Frontend (Flask) → Backend API (Flask) → RabbitMQ → Consumer 1 ─┐
                           ↕                        → Consumer 2 ─┼→ MailHog
                       ZooKeeper                    → Consumer 3 ─┘
-```
-
-### 🚀 Como Utilizar
-
-```bash
-docker compose up --build
-```
-
-Para verificar os consumers ativos, acesse o RabbitMQ Dashboard em `http://localhost:15672` → **Queues** → `email_queue` → aba **Consumers**. Os 3 consumers aparecerão listados.
-
-Para ver os logs de cada instância:
-```bash
-docker compose logs -f consumer
 ```
 
 ---
@@ -172,6 +117,12 @@ docker compose logs -f consumer
 
 Adicionado um load balancer **NGINX** na frente do frontend e do backend, com 3 instâncias de cada serviço rodando simultaneamente e sendo acessadas pelo mesmo endereço.
 
+O `docker-compose.yml` foi atualizado para usar `deploy.replicas: 3` no `frontend` e no `backend`, com `container_name` removido em ambos. Um novo serviço `nginx` foi adicionado, expondo as portas `8080` (frontend) e `5000` (backend) e carregando a configuração via volume.
+
+Foi criada a pasta `nginx/` com o arquivo `nginx.conf`, que define dois upstream pools — um para o frontend e outro para o backend — e distribui as requisições entre as instâncias usando round-robin.
+
+O `frontend/app.py` teve sua `BACKEND_URL` atualizada para apontar ao NGINX internamente, que então balanceia para as instâncias do backend.
+
 ### ⚙️ Arquitetura
 
 ```
@@ -181,88 +132,6 @@ Usuário → NGINX:8080 ─┼─ Frontend 2 ─┼→ NGINX:5000 ─┬─ Back
                                                       └─ Backend 3 ─┘
                                     ↕
                                 ZooKeeper
-```
-
-### Novas adições
-
-**`nginx/nginx.conf`** — configuração do load balancer:
-
-```nginx
-events {}
-
-http {
-    upstream frontend_pool {
-        server frontend:8080;
-    }
-
-    upstream backend_pool {
-        server backend:5000;
-    }
-
-    server {
-        listen 8080;
-        location / {
-            proxy_pass http://frontend_pool;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-    }
-
-    server {
-        listen 5000;
-        location / {
-            proxy_pass http://backend_pool;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-        }
-    }
-}
-```
-
-**`frontend/app.py`** — backend URL atualizada para apontar ao NGINX:
-
-```python
-BACKEND_URL = "http://nginx:5000"
-```
-
-**`docker-compose.yml`** — frontend e backend agora usam `deploy.replicas: 3` e o NGINX é adicionado como novo serviço:
-
-```yaml
-  backend:
-    build: ./backend
-    networks:
-      - email-net
-    depends_on:
-      zoo:
-        condition: service_started
-      rabbitmq:
-        condition: service_started
-    deploy:
-      replicas: 3
-
-  frontend:
-    build: ./frontend
-    networks:
-      - email-net
-    depends_on:
-      backend:
-        condition: service_started
-    deploy:
-      replicas: 3
-
-  nginx:
-    image: nginx:latest
-    container_name: nginx_lb
-    ports:
-      - "8080:8080"
-      - "5000:5000"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      - email-net
-    depends_on:
-      - frontend
-      - backend
 ```
 
 ### 📁 Estrutura do Projeto
@@ -291,23 +160,55 @@ poc_email/
 └── docker-compose.yml
 ```
 
-### 🚀 Como Utilizar
+---
 
-1. **Suba todos os serviços:**
+## 🚀 Como Utilizar
+
+### Pré-requisitos
+- Docker Desktop instalado e em execução
+- Docker Compose v2+
+
+### Subindo o projeto
+
+1. **Clone o repositório:**
+    ```bash
+    git clone https://github.com/NunoYokoji/poc_email.git
+    cd poc_email
+    ```
+
+2. **Suba todos os serviços:**
     ```bash
     docker compose up --build
     ```
-
-2. **Acesse as interfaces:**
-
-    | Interface                  | URL                       |
-    |----------------------------|---------------------------|
-    | Frontend (via NGINX)       | http://localhost:8080     |
-    | RabbitMQ Dashboard         | http://localhost:15672    |
-    | MailHog (caixa de entrada) | http://localhost:8025     |
 
 3. **Verifique as instâncias rodando:**
     ```bash
     docker compose ps
     ```
     Você verá `frontend-1/2/3`, `backend-1/2/3` e `consumer-1/2/3` todos com status `running`.
+
+### Acessando as interfaces
+
+| Interface                  | URL                       |
+|----------------------------|---------------------------|
+| Frontend (via NGINX)       | http://localhost:8080     |
+| RabbitMQ Dashboard         | http://localhost:15672    |
+| MailHog (caixa de entrada) | http://localhost:8025     |
+
+> Credenciais padrão do RabbitMQ: `guest` / `guest`
+
+### Enviando um e-mail
+
+- Acesse `http://localhost:8080`
+- Preencha o destinatário, assunto e corpo da mensagem
+- Clique em **Enviar Email**
+- Acompanhe o e-mail chegando na caixa do MailHog em `http://localhost:8025`
+
+### Verificando o balanceamento e os consumers
+
+No RabbitMQ Dashboard (`http://localhost:15672`) → **Queues** → `email_queue` → aba **Consumers**: os 3 consumers aparecerão listados processando as mensagens distribuídas pelo RabbitMQ.
+
+Para acompanhar os logs em tempo real:
+```bash
+docker compose logs -f consumer
+```
