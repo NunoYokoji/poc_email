@@ -11,8 +11,8 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq_servico
     ports:
-      - "5672:5672"   
-      - "15672:15672" 
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - email-net
     depends_on:
@@ -22,21 +22,22 @@ services:
     image: mailhog/mailhog:latest
     container_name: mailhog_servico
     ports:
-      - "1025:1025" 
-      - "8025:8025" 
+      - "1025:1025"
+      - "8025:8025"
     networks:
       - email-net
 
   backend:
     build: ./backend
-    container_name: backend_api
-    ports:
-      - "5000:5000"
     networks:
       - email-net
     depends_on:
-      - zoo
-      - rabbitmq
+      zoo:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    deploy:
+      replicas: 3
 
   consumer:
     build: ./consumer
@@ -52,12 +53,26 @@ services:
 
   frontend:
     build: ./frontend
-    container_name: frontend_web
-    ports:
-      - "8080:8080"
     networks:
       - email-net
     depends_on:
+      backend:
+        condition: service_started
+    deploy:
+      replicas: 3
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_lb
+    ports:
+      - "8080:8080"
+      - "5000:5000"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - email-net
+    depends_on:
+      - frontend
       - backend
 
 networks:

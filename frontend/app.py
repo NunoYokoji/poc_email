@@ -3,7 +3,7 @@ import requests
 
 app = Flask(__name__, static_folder='static')
 
-BACKEND_URL = "http://backend_api:5000"
+BACKEND_URL = "http://nginx:5000"
 
 @app.route('/')
 def home():
